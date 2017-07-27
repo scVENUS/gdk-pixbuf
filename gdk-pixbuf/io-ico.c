@@ -568,6 +568,7 @@ gdk_pixbuf__ico_image_stop_load(gpointer data,
 {
 	struct ico_progressive_state *context =
 	    (struct ico_progressive_state *) data;
+	gboolean ret = TRUE;
 
         /* FIXME this thing needs to report errors if
          * we have unused image data
@@ -575,8 +576,16 @@ gdk_pixbuf__ico_image_stop_load(gpointer data,
 
 	g_return_val_if_fail(context != NULL, TRUE);
 
+	if (context->HeaderDone < context->HeaderSize) {
+		g_set_error_literal (error,
+				     GDK_PIXBUF_ERROR,
+				     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+				     _("ICO image was truncated or incomplete."));
+		ret = FALSE;
+	}
+
 	context_free (context);
-        return TRUE;
+        return ret;
 }
 
 static void
