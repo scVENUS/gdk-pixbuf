@@ -994,6 +994,7 @@ gdk_pixbuf__jpeg_image_load_increment (gpointer data,
 		/* try to load jpeg header */
 		if (!context->got_header) {
 			int rc;
+			gboolean has_alpha;
 		
 			jpeg_save_markers (cinfo, JPEG_APP0+1, 0xffff);
 			rc = jpeg_read_header (cinfo, TRUE);
@@ -1030,10 +1031,26 @@ gdk_pixbuf__jpeg_image_load_increment (gpointer data,
 				}
 			}
 			jpeg_calc_output_dimensions (cinfo);
-			
-			context->pixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, 
-							  cinfo->output_components == 4 ? TRUE : FALSE,
-							  8, 
+
+			if (cinfo->output_components == 3) {
+				has_alpha = FALSE;
+			} else if (cinfo->output_components == 4) {
+				has_alpha = TRUE;
+			} else if (cinfo->output_components == 1 &&
+				   cinfo->out_color_space == JCS_GRAYSCALE) {
+				has_alpha = FALSE;
+			} else {
+				g_set_error (error,
+					     GDK_PIXBUF_ERROR,
+					     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+					     _("Unsupported number of color components (%d)"),
+					     cinfo->output_components);
+				return FALSE;
+			}
+
+			context->pixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB,
+							  has_alpha,
+							  8,
 							  cinfo->output_width,
 							  cinfo->output_height);
 
